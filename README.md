@@ -12,6 +12,8 @@ all other drugs, and checks whether the official FDA label already lists it.
 
 ## How it works
 
+Full diagrams (system context, request lifecycle, agent loop, tool routing, error handling, deployment): [architecture/flow-diagram.md](architecture/flow-diagram.md).
+
 The starter harness (FastAPI + LiteLLM + Gemini `gemini-3.5-flash-lite`) runs a tool loop. Sessions are
 kept in memory, so the agent follows the conversation ("how does acetaminophen compare?"), and
 different browser sessions stay separate. `/chat` returns `response`, `session_id` and `tool_calls`
