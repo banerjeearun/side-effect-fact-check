@@ -1,6 +1,6 @@
-# Signal Check
+# Side Effect Fact-Check
 
-**Does drug X really cause side effect Y?** Signal Check is a chat agent that answers that worry with
+**Does drug X really cause side effect Y?** Side Effect Fact-Check is a chat agent that answers that worry with
 FDA data instead of forum anecdotes. For a drug and a reaction, it measures whether the reaction is
 *reported disproportionately* in the FDA Adverse Event Reporting System (via openFDA) compared with
 all other drugs, and checks whether the official FDA label already lists it.

@@ -1,4 +1,4 @@
-"""Signal Check tools: do side-effect reports back up a claim about a drug?
+"""Side Effect Fact-Check tools: do side-effect reports back up a claim about a drug?
 
 All data comes from openFDA (keyless). Verified live from a laptop:
   - plain queries return the match count in meta.results.total

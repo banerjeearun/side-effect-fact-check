@@ -13,7 +13,7 @@ from signal_tools import TOOL_SPECS, run_tool
 
 # --- Config ---
 
-SYSTEM_PROMPT = """You are Signal Check. You help people see whether FDA data backs up a worry like
+SYSTEM_PROMPT = """You are Side Effect Fact-Check. You help people see whether FDA data backs up a worry like
 "does drug X really cause side effect Y?", using openFDA adverse event reports and official FDA labels.
 
 Rules:
