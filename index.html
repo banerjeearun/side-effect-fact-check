@@ -35,7 +35,21 @@
   .msg { max-width: 92%; padding: 10px 14px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
   .user { align-self: flex-end; background: var(--user); color: var(--user-ink); border-bottom-right-radius: 4px; }
   .assistant { align-self: flex-start; background: var(--panel); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
-  .loading { color: var(--muted); font-style: italic; }
+  .loading { color: var(--muted); font-style: italic; display: flex; align-items: center; gap: 12px; }
+  .capsule { position: relative; width: 40px; height: 16px; display: flex; flex: none; animation: rock 1.2s ease-in-out infinite; }
+  .capsule span { width: 50%; height: 100%; border: 1.5px solid var(--muted); }
+  .capsule span:first-of-type { background: var(--accent); border-radius: 8px 0 0 8px; animation: open-l 1.2s ease-in-out infinite; }
+  .capsule span:last-of-type { background: var(--panel); border-left: 0; border-radius: 0 8px 8px 0; animation: open-r 1.2s ease-in-out infinite; }
+  .capsule i { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%;
+               background: var(--accent); opacity: 0; animation: granule 1.2s ease-out infinite; }
+  .capsule i:nth-of-type(2) { animation-delay: .3s; --dx: -7px; }
+  .capsule i:nth-of-type(3) { animation-delay: .6s; --dx: 6px; }
+  @keyframes rock { 0%, 100% { transform: rotate(-12deg); } 50% { transform: rotate(12deg); } }
+  @keyframes open-l { 50% { transform: translateX(-3px); } }
+  @keyframes open-r { 50% { transform: translateX(3px); } }
+  @keyframes granule { 0% { opacity: 0; transform: translate(0, 0); } 30% { opacity: 1; }
+                       100% { opacity: 0; transform: translate(var(--dx, 3px), -14px); } }
+  @media (prefers-reduced-motion: reduce) { .capsule, .capsule * { animation: none !important; } }
   .turn { align-self: flex-start; width: 92%; display: flex; flex-direction: column; gap: 8px; }
   details.tool { background: var(--panel); border: 1px dashed var(--line); border-radius: 8px; font-size: 13px; }
   details.tool summary { cursor: pointer; padding: 6px 10px; color: var(--muted); }
@@ -61,6 +75,14 @@
                 background: var(--accent); color: var(--bg); }
   .bar button.secondary { background: transparent; color: var(--muted); border: 1px solid var(--line); }
   .bar button:disabled { opacity: 0.5; cursor: default; }
+  .followups { display: flex; flex-wrap: wrap; gap: 6px; }
+  .followups button { border: 1px solid var(--line); background: transparent; color: var(--accent);
+                      border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+  .followups button:hover { border-color: var(--accent); }
+  .status-ok { color: var(--known); font-weight: 700; }
+  .status-fail { color: var(--ask); font-weight: 700; }
+  .card .snip strong { color: var(--ink); }
+  .session { max-width: 760px; margin: 6px auto 0; font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -76,6 +98,7 @@
     <button>Is nausea a real side effect of ibuprofen?</button>
     <button>What do people report most for metformin, and what does its label warn about?</button>
     <button>How does acetaminophen compare for nausea?</button>
+    <button>Is tinnitus listed on the aspirin label?</button>
   </div>
   <div id="messages"></div>
 </div>
@@ -85,6 +108,7 @@
     <button id="send" type="submit">Ask</button>
     <button id="reset" type="button" class="secondary" title="Start a new conversation">New chat</button>
   </form>
+  <div class="session" id="session">New chat begins a new session.</div>
 </div>
 <script>
   const messages = document.getElementById("messages");
@@ -137,19 +161,71 @@
     card.append(el("div", "pair", r.reports_with_drug_and_reaction.toLocaleString() + " reports · reporting odds ratio "
       + r.reporting_odds_ratio + " (95% CI " + r.ci_95[0] + "–" + r.ci_95[1] + ")"));
     const lab = r.label || {};
-    card.append(el("div", "snip", lab.on_label
-      ? "Label (" + lab.sections.join(", ") + "): “…" + (lab.snippet || "") + "…”"
-      : "No matching text found on the FDA label."));
+    card.append(lab.on_label ? labelQuote(lab, r.reaction) : el("div", "snip", "No matching text found on the FDA label."));
     return card;
+  }
+
+  // "Adverse reactions, precautions: “…nausea, vomiting…”" with whole words and the reaction in bold.
+  function labelQuote(lab, reaction) {
+    const div = el("div", "snip");
+    const names = lab.sections.map((x) => x.replace(/_/g, " "));
+    names[0] = names[0].charAt(0).toUpperCase() + names[0].slice(1);
+    let text = (lab.snippet || "").replace(/\s+/g, " ");
+    text = text.replace(/^\S*\s/, "").replace(/\s\S*$/, "");  // drop the partial first and last words
+    // Same spellings the tool matched: MedDRA (British) and US, either word order.
+    const us = reaction.replace(/haem/g, "hem").replace(/oe/g, "e").replace(/ae/g, "e");
+    const terms = [reaction, us, us.split(" ").reverse().join(" ")].map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const parts = text.split(new RegExp("(" + terms.join("|") + ")", "i"));
+    div.append(names.join(", ") + " on the FDA label: “…");
+    parts.forEach((part, i) => div.append(i % 2 ? el("strong", "", part) : part));
+    div.append("…”");
+    return div;
+  }
+
+  // Next questions based on what was just checked; each one exercises a different tool.
+  // Report terms that are about the drug or the illness, not a side effect (people take ibuprofen *for* pain).
+  const NOT_A_REACTION = /drug|product|off label|no adverse|death|^pain$|condition aggravated|ineffective/i;
+  const asked = new Set();
+  function followUps(calls) {
+    const ok = calls.filter((c) => c.result && typeof c.result === "object" && !c.result.error);
+    const used = new Set(ok.map((c) => c.name));
+    const last = ok[ok.length - 1];
+    if (!last) return [];
+    const drug = last.result.drug, reaction = last.result.reaction;
+    const qs = [];
+    if (last.name === "top_reactions") {
+      last.result.top_reactions.map((x) => x.reaction.toLowerCase()).filter((x) => !NOT_A_REACTION.test(x))
+        .slice(0, 2).forEach((x) => qs.push("Is " + x + " a real side effect of " + drug + "?"));
+    }
+    if (!used.has("top_reactions")) qs.push("What do people report most for " + drug + "?");
+    if (!used.has("get_label_warnings")) qs.push("What does the " + drug + " label warn about?");
+    if (reaction && last.name !== "assess_signal") qs.push("Is " + reaction + " a real side effect of " + drug + "?");
+    return qs.filter((q) => !asked.has(q.toLowerCase())).slice(0, 3);
+  }
+
+  // A capsule that rocks open while the agent works; returns a function that stops it.
+  // The text stays generic: the browser can't know which tools (if any) are running yet.
+  function pillLoader(target) {
+    const cap = el("div", "capsule");
+    cap.append(el("span"), el("span"), el("i"), el("i"), el("i"));
+    const step = el("span", "", "Working on it…");
+    target.append(cap, step);
+    const timer = setTimeout(() => { step.textContent = "Still working: FDA lookups can take a few seconds…"; }, 6000);
+    return () => clearTimeout(timer);
   }
 
   function toolPanel(call) {
     const d = el("details", "tool");
     const s = el("summary");
-    s.append("tool call: ", el("code", "", call.name), " " + JSON.stringify(call.args));
     let result = call.result;
     try { result = JSON.parse(call.result); } catch (e) {}
-    d.append(s, el("pre", "", typeof result === "string" ? result : JSON.stringify(result, null, 2)));
+    const failed = result && typeof result === "object" && result.error;
+    s.append(failed ? el("span", "status-fail", "✗ ") : el("span", "status-ok", "✓ "));
+    s.append("tool call: ", el("code", "", call.name), "(" + Object.entries(call.args || {}).map(([k, v]) => k + ": " + v).join(", ") + ")");
+    if (failed) s.append(" · ", el("span", "status-fail", result.error));
+    else if (call.name === "assess_signal") s.append(" · runs reporting_odds_ratio + check_label_for_reaction");
+    d.append(s, el("pre", "", "args: " + JSON.stringify(call.args) + "\n\nresult: "
+      + (typeof result === "string" ? result : JSON.stringify(result, null, 2))));
     return [d, result];
   }
 
@@ -158,9 +234,12 @@
     if (!text) return;
     input.value = "";
     sendBtn.disabled = true;
+    asked.add(text.toLowerCase());
+    document.querySelectorAll(".followups").forEach((x) => x.remove());
     messages.append(el("div", "msg user", text));
     const turn = el("div", "turn");
-    const answer = el("div", "msg assistant loading", "Checking FDA data…");
+    const answer = el("div", "msg assistant loading");
+    const stopLoader = pillLoader(answer);
     turn.append(answer);
     messages.append(turn);
     answer.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -172,13 +251,23 @@
       });
       const data = await res.json();
       sessionId = data.session_id;
+      const parsed = [];
       for (const call of data.tool_calls || []) {
         const [panel, result] = toolPanel(call);
+        parsed.push({ name: call.name, result });
         turn.insertBefore(panel, answer);
         if (call.name === "assess_signal" && result && result.verdict) turn.insertBefore(signalCard(result), answer);
       }
+      stopLoader();
       answer.innerHTML = renderLite(data.response);
+      const qs = followUps(parsed);
+      if (qs.length) {
+        const box = el("div", "followups");
+        qs.forEach((q) => { const b = el("button", "", q); b.type = "button"; b.onclick = () => send(q); box.append(b); });
+        turn.append(box);
+      }
     } catch (e) {
+      stopLoader();
       answer.textContent = "Error: " + e.message;
     }
     answer.classList.remove("loading");
@@ -192,6 +281,7 @@
   document.getElementById("reset").addEventListener("click", async () => {
     if (sessionId) await fetch("/clear?session_id=" + encodeURIComponent(sessionId), { method: "POST" });
     sessionId = null;
+    asked.clear();
     messages.replaceChildren();
     input.focus();
   });
