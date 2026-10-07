@@ -4,42 +4,62 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Side Effect Fact-Check</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a64; --line: #e3e1d9;
-    --accent: #1f5f8b; --user: #1f5f8b; --user-ink: #fff;
-    --known: #2f7d4f; --ask: #b5641b; --label: #5b5fa8; --none: #77756d; --warn-bg: #fff6e0; --warn-ink: #6d4a00;
+    --bg: #ffffff; --surface: #f4f4f5; --ink: #18181b; --muted: #71717a; --line: #e4e4e7;
+    --accent: #0f766e; --accent-ink: #ffffff;
+    --known: #15803d; --ask: #c2410c; --label: #4f46e5; --none: #71717a;
+    --radius: 12px;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #161614; --panel: #201f1c; --ink: #ecebe6; --muted: #a09e96; --line: #34332e;
-      --accent: #7db7e0; --user: #2b5c80; --user-ink: #fff;
-      --known: #6cc08f; --ask: #e5a160; --label: #a3a7ec; --none: #a09e96; --warn-bg: #3a3020; --warn-ink: #f1d9a2;
+      --bg: #18181b; --surface: #27272a; --ink: #f4f4f5; --muted: #a1a1aa; --line: #3f3f46;
+      --accent: #2dd4bf; --accent-ink: #042f2e;
+      --known: #4ade80; --ask: #fb923c; --label: #a5b4fc; --none: #a1a1aa;
     }
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink);
-         font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 140px; }
-  header h1 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
-  header h1 span { color: var(--accent); }
-  header p { margin: 6px 0 12px; color: var(--muted); }
-  .disclaimer { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px;
-                padding: 8px 12px; font-size: 13px; }
-  .how { font-size: 13px; color: var(--muted); margin: 14px 0 8px; }
-  .examples { display: flex; flex-wrap: wrap; gap: 8px; }
-  .examples button { border: 1px solid var(--line); background: var(--panel); color: var(--ink);
-                     border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
-  .examples button:hover { border-color: var(--accent); color: var(--accent); }
-  #messages { margin-top: 20px; display: flex; flex-direction: column; gap: 12px; }
-  .msg { max-width: 92%; padding: 10px 14px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .user { align-self: flex-end; background: var(--user); color: var(--user-ink); border-bottom-right-radius: 4px; }
-  .assistant { align-self: flex-start; background: var(--panel); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
-  .loading { color: var(--muted); font-style: italic; display: flex; align-items: center; gap: 12px; }
-  .capsule { position: relative; width: 40px; height: 16px; display: flex; flex: none; animation: rock 1.2s ease-in-out infinite; }
-  .capsule span { width: 50%; height: 100%; border: 1.5px solid var(--muted); }
-  .capsule span:first-of-type { background: var(--accent); border-radius: 8px 0 0 8px; animation: open-l 1.2s ease-in-out infinite; }
-  .capsule span:last-of-type { background: var(--panel); border-left: 0; border-radius: 0 8px 8px 0; animation: open-r 1.2s ease-in-out infinite; }
+         font: 15px/1.6 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  button { font: inherit; }
+
+  /* Header */
+  .top { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .top-inner { max-width: 760px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+  .brand { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .top button { margin-left: auto; border: 1px solid var(--line); background: transparent; color: var(--ink);
+                border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+  .top button:hover { background: var(--surface); }
+
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 170px; }
+
+  /* Empty state: shown until the first question */
+  #empty { text-align: center; padding: 8vh 0 0; }
+  #empty h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 14px 0 6px; }
+  #empty p { color: var(--muted); max-width: 520px; margin: 0 auto 28px; }
+  .examples { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; }
+  .examples button { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: var(--radius);
+                     padding: 12px 14px; font-size: 14px; cursor: pointer; text-align: left; line-height: 1.4; }
+  .examples button:hover { background: var(--surface); }
+  @media (max-width: 560px) { .examples { grid-template-columns: 1fr; } }
+
+  /* Conversation */
+  #messages { display: flex; flex-direction: column; gap: 22px; }
+  .user { align-self: flex-end; max-width: 80%; background: var(--surface); padding: 10px 14px;
+          border-radius: 18px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .turn { display: flex; flex-direction: column; gap: 10px; }
+  .who { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+  .answer { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .loading { color: var(--muted); display: flex; align-items: center; gap: 12px; white-space: normal; }
+
+  /* Pill loader */
+  .capsule { position: relative; width: 36px; height: 14px; display: flex; flex: none; animation: rock 1.2s ease-in-out infinite; }
+  .capsule span { width: 50%; height: 100%; border: 1.5px solid var(--accent); }
+  .capsule span:first-of-type { background: var(--accent); border-radius: 7px 0 0 7px; animation: open-l 1.2s ease-in-out infinite; }
+  .capsule span:last-of-type { background: var(--bg); border-left: 0; border-radius: 0 7px 7px 0; animation: open-r 1.2s ease-in-out infinite; }
   .capsule i { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; border-radius: 50%;
                background: var(--accent); opacity: 0; animation: granule 1.2s ease-out infinite; }
   .capsule i:nth-of-type(2) { animation-delay: .3s; --dx: -7px; }
@@ -50,81 +70,115 @@
   @keyframes granule { 0% { opacity: 0; transform: translate(0, 0); } 30% { opacity: 1; }
                        100% { opacity: 0; transform: translate(var(--dx, 3px), -14px); } }
   @media (prefers-reduced-motion: reduce) { .capsule, .capsule * { animation: none !important; } }
-  .turn { align-self: flex-start; width: 92%; display: flex; flex-direction: column; gap: 8px; }
-  details.tool { background: var(--panel); border: 1px dashed var(--line); border-radius: 8px; font-size: 13px; }
-  details.tool summary { cursor: pointer; padding: 6px 10px; color: var(--muted); }
-  details.tool summary code { color: var(--accent); }
-  details.tool pre { margin: 0; padding: 8px 10px; border-top: 1px dashed var(--line); max-height: 260px;
-                     overflow: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--none);
-          border-radius: 8px; padding: 10px 14px; }
-  .card .verdict { font-weight: 650; }
-  .card .meaning { font-size: 14px; margin-top: 2px; }
-  .card .pair { color: var(--muted); font-size: 12px; }
-  .card .ror { font-size: 22px; font-weight: 700; margin: 8px 0 0; }
-  .card .ror small { font-size: 13px; font-weight: 400; color: var(--muted); }
-  .card .snip { font-size: 13px; color: var(--muted); margin-top: 6px; }
-  .known_effect { border-left-color: var(--known); } .known_effect .verdict { color: var(--known); }
-  .not_on_label_worth_asking_about { border-left-color: var(--ask); } .not_on_label_worth_asking_about .verdict { color: var(--ask); }
-  .on_label_not_disproportionate { border-left-color: var(--label); } .on_label_not_disproportionate .verdict { color: var(--label); }
-  .bar { position: fixed; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent, var(--bg) 30%); padding: 24px 16px 16px; }
-  .bar form { max-width: 760px; margin: 0 auto; display: flex; gap: 8px; }
-  .bar input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line);
-               background: var(--panel); color: var(--ink); font: inherit; }
-  .bar button { border: 0; border-radius: 10px; padding: 0 16px; font: inherit; font-weight: 600; cursor: pointer;
-                background: var(--accent); color: var(--bg); }
-  .bar button.secondary { background: transparent; color: var(--muted); border: 1px solid var(--line); }
-  .bar button:disabled { opacity: 0.5; cursor: default; }
-  .followups { display: flex; flex-wrap: wrap; gap: 6px; }
-  .followups button { border: 1px solid var(--line); background: transparent; color: var(--accent);
-                      border-radius: 999px; padding: 4px 10px; font: inherit; font-size: 12px; cursor: pointer; }
-  .followups button:hover { border-color: var(--accent); }
+
+  /* Tool calls: quiet single lines */
+  details.tool { border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px; color: var(--muted); }
+  details.tool summary { cursor: pointer; padding: 6px 10px; list-style: none; display: flex; align-items: baseline; gap: 12px; }
+  details.tool summary .line { flex: 1; min-width: 0; }
+  details.tool summary::-webkit-details-marker { display: none; }
+  details.tool summary::after { content: "Show details"; flex: none; color: var(--accent); }
+  details.tool[open] summary::after { content: "Hide"; }
+  details.tool code { color: var(--ink); font-family: ui-monospace, Menlo, monospace; }
+  details.tool pre { margin: 0; padding: 10px; border-top: 1px solid var(--line); max-height: 260px; overflow: auto;
+                     font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface);
+                     border-radius: 0 0 8px 8px; }
   .status-ok { color: var(--known); font-weight: 700; }
-  .status-fail { color: var(--ask); font-weight: 700; }
+  .status-fail { color: var(--ask); font-weight: 600; }
+
+  /* Verdict card: the only bordered box */
+  .card { --v: var(--none); border: 1px solid var(--line); border-left: 4px solid var(--v); border-radius: var(--radius);
+          padding: 14px 16px; }
+  .card.known_effect { --v: var(--known); }
+  .card.not_on_label_worth_asking_about { --v: var(--ask); }
+  .card.on_label_not_disproportionate { --v: var(--label); }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+           color: var(--v); background: color-mix(in srgb, var(--v) 12%, transparent); padding: 2px 8px; border-radius: 999px; }
+  .card .meaning { font-size: 14px; color: var(--muted); margin-top: 6px; }
+  .card .ror { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin-top: 10px; }
+  .card .ror small { font-size: 14px; font-weight: 400; color: var(--muted); }
+  .card .pair { font-size: 12px; color: var(--muted); }
+  .card .snip { font-size: 13px; color: var(--muted); margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
   .card .snip strong { color: var(--ink); }
-  .session { max-width: 760px; margin: 6px auto 0; font-size: 12px; color: var(--muted); }
+
+  /* Follow-up suggestions */
+  .followups { display: flex; flex-wrap: wrap; gap: 8px; }
+  .followups button { border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px;
+                      padding: 5px 12px; font-size: 13px; cursor: pointer; }
+  .followups button:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Composer */
+  .composer { position: fixed; left: 0; right: 0; bottom: 0; padding: 20px 16px 12px;
+              background: linear-gradient(transparent, var(--bg) 30%); }
+  .composer form { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 8px;
+                   border: 1px solid var(--line); border-radius: 16px; padding: 6px 6px 6px 16px; background: var(--bg);
+                   box-shadow: 0 4px 18px rgba(0,0,0,.06); }
+  .composer form:focus-within { border-color: var(--accent); }
+  .composer input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink);
+                    font: inherit; padding: 8px 0; }
+  .composer button { width: 36px; height: 36px; flex: none; border: 0; border-radius: 10px; cursor: pointer;
+                     background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+  .composer button:disabled { opacity: .4; cursor: default; }
+  .note { max-width: 760px; margin: 8px auto 0; text-align: center; font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>Side Effect <span>Fact-Check</span></h1>
-    <p>Worried a medicine is behind a side effect? Ask whether FDA adverse-event reports back it up, and whether the official FDA label already lists it.</p>
-    <div class="disclaimer"><strong>Reports are voluntary and unverified. Not medical advice.</strong>
-      Never start, stop or change a medicine without talking to a doctor or pharmacist.</div>
-  </header>
-  <div class="how">Ask about a drug (generic or brand name) and a side effect. Try one of these:</div>
-  <div class="examples">
-    <button>Is nausea a real side effect of ibuprofen?</button>
-    <button>What do people report most for metformin, and what does its label warn about?</button>
-    <button>How does acetaminophen compare for nausea?</button>
-    <button>Is tinnitus listed on the aspirin label?</button>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+        <g transform="rotate(-45 12 12)"><rect x="3" y="8" width="18" height="8" rx="4" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        <path d="M7 8h5v8H7a4 4 0 0 1 0-8z" fill="var(--accent)"/></g>
+      </svg>
+      Side Effect Fact-Check
+    </div>
+    <button id="reset" type="button" title="Start a new conversation">New chat</button>
   </div>
-  <div id="messages"></div>
-</div>
-<div class="bar">
+</header>
+
+<main class="wrap">
+  <section id="empty">
+    <svg width="44" height="44" viewBox="0 0 24 24" aria-hidden="true">
+      <g transform="rotate(-45 12 12)"><rect x="3" y="8" width="18" height="8" rx="4" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+      <path d="M7 8h5v8H7a4 4 0 0 1 0-8z" fill="var(--accent)"/></g>
+    </svg>
+    <h1>Does that drug really cause that?</h1>
+    <p>Ask about a medicine (generic or brand name) and a side effect. I check how often it appears in FDA adverse event reports compared with other drugs, and whether the official FDA label lists it.</p>
+    <div class="examples">
+      <button>Is nausea a real side effect of ibuprofen?</button>
+      <button>What do people report most for metformin, and what does its label warn about?</button>
+      <button>How does acetaminophen compare for nausea?</button>
+      <button>Is tinnitus listed on the aspirin label?</button>
+    </div>
+  </section>
+  <div id="messages" aria-live="polite"></div>
+</main>
+
+<div class="composer">
   <form id="form">
-    <input id="input" placeholder="e.g. Does sertraline cause insomnia?" autocomplete="off" />
-    <button id="send" type="submit">Ask</button>
-    <button id="reset" type="button" class="secondary" title="Start a new conversation">New chat</button>
+    <input id="input" placeholder="Ask about a drug and a side effect…" autocomplete="off" aria-label="Your question" />
+    <button id="send" type="submit" aria-label="Send">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+    </button>
   </form>
-  <div class="session" id="session">New chat begins a new session.</div>
+  <div class="note">Not medical advice. FDA reports are voluntary and unverified. Never start, stop or change a medicine without a doctor or pharmacist. New chat begins a new session.</div>
 </div>
+
 <script>
   const messages = document.getElementById("messages");
+  const empty = document.getElementById("empty");
   const input = document.getElementById("input");
   const sendBtn = document.getElementById("send");
   let sessionId = null;
 
-  // [title, one-line plain explanation] for each assess_signal verdict.
+  // [badge, one-line plain explanation] for each assess_signal verdict.
   const VERDICTS = {
-    known_effect: ["✅ Known side effect",
+    known_effect: ["Known side effect",
       "Reported more often with this drug than with others, and listed on its FDA label."],
-    not_on_label_worth_asking_about: ["⚠️ Worth asking your pharmacist",
+    not_on_label_worth_asking_about: ["Worth asking your pharmacist",
       "Reported more often with this drug, but we couldn't find it on the FDA label (it may use different wording)."],
-    on_label_not_disproportionate: ["📋 On the label, not over-reported",
+    on_label_not_disproportionate: ["On the label, not over-reported",
       "Listed on the FDA label, but not reported more often than with other drugs."],
-    no_signal: ["➖ No signal found",
+    no_signal: ["No signal found",
       "Not reported more often than with other drugs, and not found on the FDA label."],
   };
 
@@ -153,7 +207,7 @@
   function signalCard(r) {
     const card = el("div", "card " + r.verdict);
     const [title, meaning] = VERDICTS[r.verdict] || [r.verdict, r.meaning || ""];
-    card.append(el("div", "verdict", title), el("div", "meaning", meaning));
+    card.append(el("span", "badge", title), el("div", "meaning", meaning));
     const [big, rest] = plainRatio(r);
     const ror = el("div", "ror");
     ror.append(el("span", "", big), el("small", "", " " + rest + " · " + r.drug + " + " + r.reaction));
@@ -165,7 +219,7 @@
     return card;
   }
 
-  // "Adverse reactions, precautions: “…nausea, vomiting…”" with whole words and the reaction in bold.
+  // "Adverse reactions, precautions on the FDA label: “…nausea, vomiting…”" with whole words and the reaction in bold.
   function labelQuote(lab, reaction) {
     const div = el("div", "snip");
     const names = lab.sections.map((x) => x.replace(/_/g, " "));
@@ -217,30 +271,42 @@
   function toolPanel(call) {
     const d = el("details", "tool");
     const s = el("summary");
+    const line = el("span", "line");
     let result = call.result;
     try { result = JSON.parse(call.result); } catch (e) {}
     const failed = result && typeof result === "object" && result.error;
-    s.append(failed ? el("span", "status-fail", "✗ ") : el("span", "status-ok", "✓ "));
-    s.append("tool call: ", el("code", "", call.name), "(" + Object.entries(call.args || {}).map(([k, v]) => k + ": " + v).join(", ") + ")");
-    if (failed) s.append(" · ", el("span", "status-fail", result.error));
-    else if (call.name === "assess_signal") s.append(" · runs reporting_odds_ratio + check_label_for_reaction");
+    line.append(failed ? el("span", "status-fail", "✗ ") : el("span", "status-ok", "✓ "));
+    line.append(el("code", "", call.name), "(" + Object.entries(call.args || {}).map(([k, v]) => k + ": " + v).join(", ") + ")");
+    if (failed) line.append(" · ", el("span", "status-fail", result.error));
+    else if (call.name === "assess_signal") line.append(" · runs reporting_odds_ratio + check_label_for_reaction");
+    s.append(line);
     d.append(s, el("pre", "", "args: " + JSON.stringify(call.args) + "\n\nresult: "
       + (typeof result === "string" ? result : JSON.stringify(result, null, 2))));
     return [d, result];
   }
 
+  function who() {
+    const w = el("div", "who");
+    w.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><g transform="rotate(-45 12 12)">'
+      + '<rect x="3" y="8" width="18" height="8" rx="4" fill="none" stroke="var(--accent)" stroke-width="2"/>'
+      + '<path d="M7 8h5v8H7a4 4 0 0 1 0-8z" fill="var(--accent)"/></g></svg>';
+    w.append("Fact-Check");
+    return w;
+  }
+
   async function send(text) {
     text = (text || "").trim();
     if (!text) return;
+    asked.add(text.toLowerCase());
+    empty.hidden = true;
+    document.querySelectorAll(".followups").forEach((x) => x.remove());
     input.value = "";
     sendBtn.disabled = true;
-    asked.add(text.toLowerCase());
-    document.querySelectorAll(".followups").forEach((x) => x.remove());
-    messages.append(el("div", "msg user", text));
+    messages.append(el("div", "user", text));
     const turn = el("div", "turn");
-    const answer = el("div", "msg assistant loading");
+    const answer = el("div", "answer loading");
     const stopLoader = pillLoader(answer);
-    turn.append(answer);
+    turn.append(who(), answer);
     messages.append(turn);
     answer.scrollIntoView({ behavior: "smooth", block: "end" });
     try {
@@ -283,6 +349,7 @@
     sessionId = null;
     asked.clear();
     messages.replaceChildren();
+    empty.hidden = false;
     input.focus();
   });
   input.focus();

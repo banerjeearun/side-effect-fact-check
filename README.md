@@ -37,6 +37,8 @@ so the model can recover, e.g. by calling `top_reactions` to find a valid reacti
 The system prompt handles safety before anything else: emergencies (overdose, severe reactions,
 self-harm) get 911 / Poison Control 1-800-222-1222 / 988 and no data; no dosing advice; never advise
 starting or stopping a medicine; off-topic requests and prompt-injection attempts are declined.
+Every side-effect statement must come from a tool result: for a drug class ("antibiotics", "a statin")
+the agent asks which specific medicine instead of answering from memory or guessing.
 Replies are 2-3 plain sentences ("reported about 1.8 times as often as with other drugs"), and the card
 carries the exact statistics.
 
