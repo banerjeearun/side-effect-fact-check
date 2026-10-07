@@ -97,8 +97,7 @@ link (negative controls):
 - **12/12 known side effects** are flagged and found on the label. The first run found only 8/12 on the
   label: ciprofloxacin matched its eye-drop label, and British MedDRA spellings ("haemorrhage",
   "diarrhoea") missed the US label text. Both are fixed and unit tested.
-- **2/4 unrelated pairs are false alarms.** This is a known weakness of disproportionality analysis,
-  not a code bug: a report lists every drug a patient was taking, so a common drug can pick up another
+- **2/4 unrelated pairs are false alarms.** This is a known weakness of disproportionality analysis: a report lists every drug a patient was taking, so a common drug can pick up another
   drug's reactions (older patients on levothyroxine are also the ones prescribed fluoroquinolones,
   which cause tendon rupture). The false alarms are weak (about 2×, a few hundred reports); real effects
   are mostly far stronger (5–26×, thousands of reports). This is why the app says "worth asking a
