@@ -45,8 +45,9 @@
   .card { background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--none);
           border-radius: 8px; padding: 10px 14px; }
   .card .verdict { font-weight: 650; }
-  .card .pair { color: var(--muted); font-size: 13px; }
-  .card .ror { font-size: 22px; font-weight: 700; margin: 4px 0 0; }
+  .card .meaning { font-size: 14px; margin-top: 2px; }
+  .card .pair { color: var(--muted); font-size: 12px; }
+  .card .ror { font-size: 22px; font-weight: 700; margin: 8px 0 0; }
   .card .ror small { font-size: 13px; font-weight: 400; color: var(--muted); }
   .card .snip { font-size: 13px; color: var(--muted); margin-top: 6px; }
   .known_effect { border-left-color: var(--known); } .known_effect .verdict { color: var(--known); }
@@ -91,12 +92,26 @@
   const sendBtn = document.getElementById("send");
   let sessionId = null;
 
+  // [title, one-line plain explanation] for each assess_signal verdict.
   const VERDICTS = {
-    known_effect: "Known effect",
-    not_on_label_worth_asking_about: "Over-reported, not found on label: worth asking a pharmacist",
-    on_label_not_disproportionate: "On the label, but not over-reported",
-    no_signal: "No signal",
+    known_effect: ["✅ Known side effect",
+      "Reported more often with this drug than with others, and listed on its FDA label."],
+    not_on_label_worth_asking_about: ["⚠️ Worth asking your pharmacist",
+      "Reported more often with this drug, but we couldn't find it on the FDA label (it may use different wording)."],
+    on_label_not_disproportionate: ["📋 On the label, not over-reported",
+      "Listed on the FDA label, but not reported more often than with other drugs."],
+    no_signal: ["➖ No signal found",
+      "Not reported more often than with other drugs, and not found on the FDA label."],
   };
+
+  // The ratio in everyday words, using the same thresholds as assess_signal.
+  function plainRatio(r) {
+    const [lo, hi] = r.ci_95, x = r.reporting_odds_ratio;
+    if (r.reports_with_drug_and_reaction < 5) return ["Too few reports", "to compare with other drugs"];
+    if (lo > 1) return [x.toFixed(1) + "× as often", "as with other drugs"];
+    if (hi < 1) return ["Less often", "than with other drugs (" + x.toFixed(1) + "×)"];
+    return ["About as often", "as with other drugs"];
+  }
 
   function el(tag, cls, text) {
     const e = document.createElement(tag);
@@ -113,11 +128,14 @@
 
   function signalCard(r) {
     const card = el("div", "card " + r.verdict);
-    card.append(el("div", "verdict", VERDICTS[r.verdict] || r.verdict));
-    card.append(el("div", "pair", r.drug + " + " + r.reaction + " · " + r.reports_with_drug_and_reaction.toLocaleString() + " reports"));
-    const ror = el("div", "ror", "ROR " + r.reporting_odds_ratio + " ");
-    ror.append(el("small", "", "95% CI " + r.ci_95[0] + "–" + r.ci_95[1] + " (above 1 = reported more than with other drugs)"));
+    const [title, meaning] = VERDICTS[r.verdict] || [r.verdict, r.meaning || ""];
+    card.append(el("div", "verdict", title), el("div", "meaning", meaning));
+    const [big, rest] = plainRatio(r);
+    const ror = el("div", "ror");
+    ror.append(el("span", "", big), el("small", "", " " + rest + " · " + r.drug + " + " + r.reaction));
     card.append(ror);
+    card.append(el("div", "pair", r.reports_with_drug_and_reaction.toLocaleString() + " reports · reporting odds ratio "
+      + r.reporting_odds_ratio + " (95% CI " + r.ci_95[0] + "–" + r.ci_95[1] + ")"));
     const lab = r.label || {};
     card.append(el("div", "snip", lab.on_label
       ? "Label (" + lab.sections.join(", ") + "): “…" + (lab.snippet || "") + "…”"

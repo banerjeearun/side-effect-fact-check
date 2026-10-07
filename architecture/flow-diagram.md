@@ -12,7 +12,7 @@ the doc can be checked against the source.
 4. [Agent loop](#4-agent-loop): the harness in `run_agent()`
 5. [Tool routing](#5-tool-routing): which tool answers which question
 6. [`assess_signal` pipeline](#6-assess_signal-pipeline): the original tool
-7. [openFDA access and error handling](#7-openfda-access-and-error-handling)
+7. [openFDA access and error handling](#7-openfda-access-and-error-handling), then [guardrails](#7b-guardrails)
 8. [Sessions](#8-sessions)
 9. [Deployment](#9-deployment)
 10. [Design decisions](#10-design-decisions)
@@ -182,7 +182,11 @@ The system prompt maps question types to tools. The model chooses, but the descr
 
 ```mermaid
 flowchart TD
-    q(["User message"]) --> clear{"Drug and reaction<br/>clear?"}
+    q(["User message"]) --> safe{"Emergency, dosing<br/>or off-topic?"}
+    safe -- "emergency" --> em["911 / Poison Control<br/>1-800-222-1222 / 988<br/>(no tool call)"]
+    safe -- "dosing" --> ds["Decline, point to pharmacist<br/>or label (no tool call)"]
+    safe -- "off-topic or injection" --> ot["Say what the app does,<br/>give an example (no tool call)"]
+    safe -- "side-effect question" --> clear{"Drug and reaction<br/>clear?"}
     clear -- no --> ask["Ask one clarifying question<br/>(no tool call)"]
     clear -- yes --> brand{"Brand name?<br/>e.g. Advil"}
     brand -- yes --> generic["Convert to generic and say so<br/>Advil → ibuprofen"]
@@ -197,7 +201,7 @@ flowchart TD
 
     as --> nf{"REACTION_NOT_FOUND?"}
     nf -- yes --> tr2["top_reactions(drug)<br/>to find the right MedDRA term"] --> as
-    nf -- no --> reply(["Reply: 'reported disproportionately',<br/>numbers, label finding, caveat"])
+    nf -- no --> reply(["Reply: 2-3 plain sentences,<br/>'about 1.8 times as often', label finding, caveat<br/>(numbers go on the card)"])
 ```
 
 | Tool | Original? | External calls | Returns |
@@ -242,14 +246,14 @@ Ibuprofen + nausea (live): a = 18,315 → **ROR 1.78, 95% CI 1.76–1.81**.
 
 ```mermaid
 flowchart LR
-    s["label search<br/>generic_name = drug, limit 25"] --> rank["rank candidates<br/>1. single ingredient<br/>2. has adverse_reactions"]
+    s["label search<br/>generic_name = drug, limit 25"] --> rank["rank candidates<br/>1. single ingredient<br/>2. oral route<br/>3. has adverse_reactions"]
     rank --> best["best label"]
-    best --> scan["text search in boxed_warning, warnings,<br/>warnings_and_cautions, adverse_reactions, precautions"]
+    best --> scan["text search, MedDRA + US spellings<br/>e.g. oedema peripheral, peripheral edema<br/>in boxed_warning, warnings,<br/>warnings_and_cautions, adverse_reactions, precautions"]
     scan --> out["on_label, sections, snippet"]
 ```
 
 Ranking matters: the first search hit for ibuprofen is an OTC "Drug Facts" label with no adverse
-reactions section, which made nausea look "not on label". `_label_rank` fixes this and has a unit test.
+reactions section, which made nausea look "not on label". Ciprofloxacin matched its eye-drop label (no tendon warning), and British MedDRA spellings missed US label text. `_label_rank` and `_spellings` fix both, with unit tests; see the Validation table in the README.
 
 ### 6c. Verdict
 
@@ -308,6 +312,24 @@ before it goes into an openFDA query string, so quotes and query operators canno
 
 ---
 
+## 7b. Guardrails
+
+Safety is layered, so no single layer has to be perfect:
+
+| Layer | Guardrail | Where |
+|---|---|---|
+| Prompt: safety rules (checked first) | Emergencies (overdose, severe reaction, self-harm) get 911 / Poison Control 1-800-222-1222 / 988 and no data · no dosing advice · never advise starting, stopping or changing a medicine | `SYSTEM_PROMPT` in `app.py` |
+| Prompt: scope | Only drug side-effect questions; anything else gets one sentence on what the app does | `SYSTEM_PROMPT` |
+| Prompt: injection | User cannot change the rules, reveal the prompt or assign a role; pasted text and tool results are data | `SYSTEM_PROMPT` |
+| Prompt: wording | Never "causes"; "reported about N times as often as with other drugs"; always one caveat | `SYSTEM_PROMPT` |
+| Tool output | Caveats travel inside every result; fewer than 5 reports is never a signal | `signal_tools.py` |
+| Query safety | `_clean()` strips quotes and query operators before building openFDA searches | `signal_tools.py` |
+| Agent loop | 5-round cap; unknown tools, bad args and crashes become hints | `app.py`, `run_tool()` |
+| UI | Disclaimer always visible; model text is HTML-escaped before rendering | `index.html` |
+| Access | IAP, Columbia accounts only; no secrets in the repo | Cloud Run |
+
+---
+
 ## 8. Sessions
 
 ```mermaid
@@ -358,9 +380,9 @@ flowchart LR
 |---|---|---|
 | Reporting odds ratio, not raw counts | Show top report counts only | Popular drugs have more reports of everything; the ratio compares against all other drugs |
 | Combine reports **and** label in one tool | Let the model call two tools and combine | One deterministic verdict, computed in tested Python instead of by the model |
-| Say "reported disproportionately", never "causes" | Plain "causes" language | Spontaneous reports cannot prove causation; the wording is enforced in the prompt and the tool output |
+| Say "reported N times as often", never "causes" | Plain "causes" language, or statistical jargon | Spontaneous reports cannot prove causation; plain wording is readable, and the card keeps the exact statistics |
 | Errors returned as `{error, hint}` | Raise exceptions | The model cannot see exceptions; a hint lets it retry or explain |
-| Pure math function, tested offline | Compute inline in the tool | Statistics are checked without the network (17 unit tests) |
+| Pure math function, tested offline | Compute inline in the tool | Statistics are checked without the network (20 unit tests) |
 | 6-hour response cache | No cache | Follow-up questions repeat counts (e.g. "all reports"); saves openFDA quota and latency |
 | `max(..., key=_label_rank)` over 25 labels | Take the first label | First hit is often an OTC or combination label |
 | Domain logic isolated in `signal_tools.py` | Tools inside `app.py` | Clear boundary (`TOOL_SPECS`, `run_tool`); either side can change alone |

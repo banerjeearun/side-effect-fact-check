@@ -168,15 +168,17 @@ def reporting_odds_ratio(drug: str, reaction: str) -> dict:
 _LABEL_SECTIONS = ("boxed_warning", "warnings", "warnings_and_cautions", "adverse_reactions", "precautions")
 
 
-def _label_rank(label: dict, drug: str) -> tuple[bool, bool]:
-    """Prefer a single-ingredient label, then one with an adverse reactions section.
+def _label_rank(label: dict, drug: str) -> tuple[bool, bool, bool]:
+    """Prefer a single-ingredient label, then an oral one, then one with an adverse reactions section.
 
-    Verified live: the first match is often an OTC 'Drug Facts' label (no adverse reactions)
-    or a combination product, which made e.g. ibuprofen + nausea look 'not on label'.
+    Verified live: the first match is often an OTC 'Drug Facts' label (no adverse reactions),
+    a combination product, or eye drops (ciprofloxacin), which hid well-known reactions.
     """
-    names = [n.lower() for n in label.get("openfda", {}).get("generic_name", [])]
+    openfda = label.get("openfda", {})
+    names = [n.lower() for n in openfda.get("generic_name", [])]
     single = any(n.startswith(drug) and " and " not in n for n in names)
-    return single, "adverse_reactions" in label
+    oral = "ORAL" in openfda.get("route", [])
+    return single, oral, "adverse_reactions" in label
 
 
 def _label(drug: str) -> tuple[dict | None, dict | None]:
@@ -212,8 +214,18 @@ def get_label_warnings(drug: str) -> dict:
     return out
 
 
+def _spellings(reaction: str) -> list[str]:
+    """Report terms are MedDRA (British: 'oedema peripheral'); US labels say 'peripheral edema'."""
+    us = reaction.replace("haem", "hem").replace("oe", "e").replace("ae", "e")
+    out = [reaction, us]
+    words = us.split()
+    if len(words) == 2:
+        out.append(f"{words[1]} {words[0]}")
+    return list(dict.fromkeys(out))
+
+
 def check_label_for_reaction(drug: str, reaction: str) -> dict:
-    """Does the official label mention this reaction? Simple text match, so synonyms can be missed."""
+    """Does the official label mention this reaction? Text match (with US spellings), so synonyms can be missed."""
     drug, reaction = _clean(drug).lower(), _clean(reaction).lower()
     if not drug or not reaction:
         return {"error": "MISSING_INPUT", "hint": "Need both a drug and a reaction term."}
@@ -221,9 +233,11 @@ def check_label_for_reaction(drug: str, reaction: str) -> dict:
     if err: return err
     found = []
     snippet = None
+    terms = _spellings(reaction)
     for s in _LABEL_SECTIONS:
         t = _section_text(label, s)
-        i = t.lower().find(reaction)
+        low = t.lower()
+        i = next((i for i in (low.find(term) for term in terms) if i >= 0), -1)
         if i >= 0:
             found.append(s)
             snippet = snippet or t[max(0, i - 120): i + 160].strip()

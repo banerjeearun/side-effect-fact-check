@@ -98,6 +98,18 @@ class ToolTests(unittest.TestCase):
         with patch.object(sg, "_get", return_value=({"results": [otc, combo, rx]}, None)):
             self.assertIs(sg._label("ibuprofen")[0], rx)
 
+    def test_label_prefers_oral_over_eye_drops(self):
+        eye = {"openfda": {"generic_name": ["CIPROFLOXACIN"], "route": ["OPHTHALMIC"]}, "adverse_reactions": ["x"]}
+        tab = {"openfda": {"generic_name": ["CIPROFLOXACIN"], "route": ["ORAL"]}, "adverse_reactions": ["Tendon rupture."]}
+        with patch.object(sg, "_get", return_value=({"results": [eye, tab]}, None)):
+            self.assertIs(sg._label("ciprofloxacin")[0], tab)
+
+    def test_label_check_matches_us_spelling_and_word_order(self):
+        label = {"adverse_reactions": ["Dose-related peripheral edema and diarrhea were reported."]}
+        with patch.object(sg, "_label", return_value=(label, None)):
+            self.assertTrue(sg.check_label_for_reaction("amlodipine", "oedema peripheral")["on_label"])
+            self.assertTrue(sg.check_label_for_reaction("metformin", "diarrhoea")["on_label"])
+
     def test_get_label_warnings_truncates(self):
         label = {"warnings": ["x" * 5000]}
         with patch.object(sg, "_label", return_value=(label, None)):
