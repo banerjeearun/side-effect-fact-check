@@ -5,7 +5,7 @@ FDA data instead of forum anecdotes. For a drug and a reaction, it measures whet
 *reported disproportionately* in the FDA Adverse Event Reporting System (via openFDA) compared with
 all other drugs, and checks whether the official FDA label already lists it.
 
-**Live app:** DEPLOY_URL (Columbia sign-in required)
+**Live app:** https://side-effect-fact-check-git-177209096392.europe-west1.run.app (Columbia sign-in required)
 
 > Reports are voluntary and unverified, and a report does not prove the drug caused the reaction.
 > Not medical advice.
