@@ -139,7 +139,7 @@ def top_reactions(drug: str, limit: int = 10) -> dict:
 
 
 def reporting_odds_ratio(drug: str, reaction: str) -> dict:
-    """ORIGINAL TOOL: how disproportionately is this reaction reported with this drug versus all other drugs?"""
+    """How disproportionately is this reaction reported with this drug versus all other drugs?"""
     drug, reaction = _clean(drug).lower(), _clean(reaction).lower()
     if not drug or not reaction:
         return {"error": "MISSING_INPUT", "hint": "Need both a drug (generic name) and a reaction (medical term, e.g. 'nausea')."}
@@ -246,7 +246,7 @@ def check_label_for_reaction(drug: str, reaction: str) -> dict:
 
 
 def assess_signal(drug: str, reaction: str) -> dict:
-    """ORIGINAL TOOL: combine reporting ratio and label check into 'known effect' vs 'worth asking about'."""
+    """Combine reporting ratio and label check into 'known effect' vs 'worth asking about'."""
     ror = reporting_odds_ratio(drug, reaction)
     if "error" in ror: return ror
     lab = check_label_for_reaction(drug, reaction)

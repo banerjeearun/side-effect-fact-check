@@ -1,5 +1,7 @@
 # Side Effect Fact-Check
 
+*Project 1 for IEOR 4570: Agentic AI (Columbia University, Fall 2026).*
+
 **Does drug X really cause side effect Y?** Side Effect Fact-Check is a chat agent that answers that worry with
 FDA data instead of forum anecdotes. For a drug and a reaction, it measures whether the reaction is
 *reported disproportionately* in the FDA Adverse Event Reporting System (via openFDA) compared with
@@ -26,8 +28,8 @@ so the model can recover, e.g. by calling `top_reactions` to find a valid reacti
 
 | Tool | What it does |
 |---|---|
-| `assess_signal` *(original)* | The main tool. Combines the reporting odds ratio with the label check and returns a verdict: `known_effect`, `not_on_label_worth_asking_about`, `on_label_not_disproportionate` or `no_signal`. |
-| `reporting_odds_ratio` *(original)* | Builds the 2×2 table from four openFDA counts (drug+reaction, drug, reaction, all reports) and computes the ROR with a 95% confidence interval, the standard pharmacovigilance disproportionality measure. |
+| `assess_signal` | The main tool. Combines the reporting odds ratio with the label check and returns a verdict: `known_effect`, `not_on_label_worth_asking_about`, `on_label_not_disproportionate` or `no_signal`. |
+| `reporting_odds_ratio` | Builds the 2×2 table from four openFDA counts (drug+reaction, drug, reaction, all reports) and computes the ROR with a 95% confidence interval, the standard pharmacovigilance disproportionality measure. |
 | `top_reactions` | Most-reported reactions for a drug (also gives the model valid MedDRA terms). |
 | `get_label_warnings` | Boxed warning, warnings and adverse reactions from the FDA label (truncated). |
 | `check_label_for_reaction` | Whether the label text mentions a reaction, with a snippet. Picks a single-ingredient, oral label with an adverse reactions section (over OTC, combination or eye-drop labels), and matches US spellings and word order of MedDRA terms ("oedema peripheral" → "peripheral edema"). |

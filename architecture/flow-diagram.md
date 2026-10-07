@@ -11,7 +11,7 @@ the doc can be checked against the source.
 3. [Request lifecycle](#3-request-lifecycle): one `/chat` call, end to end
 4. [Agent loop](#4-agent-loop): the harness in `run_agent()`
 5. [Tool routing](#5-tool-routing): which tool answers which question
-6. [`assess_signal` pipeline](#6-assess_signal-pipeline): the original tool
+6. [`assess_signal` pipeline](#6-assess_signal-pipeline): how a verdict is built
 7. [openFDA access and error handling](#7-openfda-access-and-error-handling), then [guardrails](#7b-guardrails)
 8. [Sessions](#8-sessions)
 9. [Deployment](#9-deployment)
@@ -126,7 +126,7 @@ sequenceDiagram
     B->>U: tool panel + verdict card + reply
 ```
 
-The `/chat` response shape is kept from the starter so graders and the UI can see every tool call:
+The `/chat` response shape is kept from the starter so the UI can show every tool call:
 
 ```json
 {
@@ -204,19 +204,19 @@ flowchart TD
     nf -- no --> reply(["Reply: 2-3 plain sentences,<br/>'about 1.8 times as often', label finding, caveat<br/>(numbers go on the card)"])
 ```
 
-| Tool | Original? | External calls | Returns |
-|---|---|---|---|
-| `assess_signal` | **Yes** | 4 event counts + 1 label search | Verdict, ROR, 95% CI, label snippet, caveats |
-| `reporting_odds_ratio` | **Yes** | 4 event counts | ROR, 95% CI, 2×2 counts, plain reading |
-| `top_reactions` | No | 1 event count-by-reaction | Top N reactions with report counts |
-| `get_label_warnings` | No | 1 label search | Boxed warning, warnings, adverse reactions (truncated to 1,200 chars each) |
-| `check_label_for_reaction` | No | 1 label search | `on_label`, sections, snippet |
+| Tool | External calls | Returns |
+|---|---|---|
+| `assess_signal` | 4 event counts + 1 label search | Verdict, ROR, 95% CI, label snippet, caveats |
+| `reporting_odds_ratio` | 4 event counts | ROR, 95% CI, 2×2 counts, plain reading |
+| `top_reactions` | 1 event count-by-reaction | Top N reactions with report counts |
+| `get_label_warnings` | 1 label search | Boxed warning, warnings, adverse reactions (truncated to 1,200 chars each) |
+| `check_label_for_reaction` | 1 label search | `on_label`, sections, snippet |
 
 ---
 
 ## 6. `assess_signal` pipeline
 
-The original tool. It answers "does X really cause Y?" by combining two independent sources of
+The main tool. It answers "does X really cause Y?" by combining two independent sources of
 evidence: what people report, and what the FDA label already says.
 
 ### 6a. Reporting odds ratio
@@ -370,7 +370,7 @@ flowchart LR
 | Build | Google Cloud buildpack (no Dockerfile) | `pyproject.toml` + `uv.lock` are enough |
 | Entrypoint | `uvicorn app:app --host 0.0.0.0 --port $PORT` | Cloud Run sets `$PORT` and needs `0.0.0.0` |
 | Max instances | 1 | Keeps in-memory sessions consistent |
-| Access | IAP, `columbia.edu` | Course requirement; graders sign in with Columbia accounts |
+| Access | IAP, `columbia.edu` | Only Columbia accounts can sign in |
 | Secrets | None in the repo | Vertex AI uses the service account; `OPENFDA_API_KEY` is optional and set as an env var |
 
 ---
