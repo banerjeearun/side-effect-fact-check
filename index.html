@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Signal Check</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a64; --line: #e3e1d9;
+    --accent: #1f5f8b; --user: #1f5f8b; --user-ink: #fff;
+    --known: #2f7d4f; --ask: #b5641b; --label: #5b5fa8; --none: #77756d; --warn-bg: #fff6e0; --warn-ink: #6d4a00;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161614; --panel: #201f1c; --ink: #ecebe6; --muted: #a09e96; --line: #34332e;
+      --accent: #7db7e0; --user: #2b5c80; --user-ink: #fff;
+      --known: #6cc08f; --ask: #e5a160; --label: #a3a7ec; --none: #a09e96; --warn-bg: #3a3020; --warn-ink: #f1d9a2;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 140px; }
+  header h1 { margin: 0; font-size: 28px; letter-spacing: -0.02em; }
+  header h1 span { color: var(--accent); }
+  header p { margin: 6px 0 12px; color: var(--muted); }
+  .disclaimer { background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px;
+                padding: 8px 12px; font-size: 13px; }
+  .how { font-size: 13px; color: var(--muted); margin: 14px 0 8px; }
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; }
+  .examples button { border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+                     border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .examples button:hover { border-color: var(--accent); color: var(--accent); }
+  #messages { margin-top: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 92%; padding: 10px 14px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .user { align-self: flex-end; background: var(--user); color: var(--user-ink); border-bottom-right-radius: 4px; }
+  .assistant { align-self: flex-start; background: var(--panel); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .loading { color: var(--muted); font-style: italic; }
+  .turn { align-self: flex-start; width: 92%; display: flex; flex-direction: column; gap: 8px; }
+  details.tool { background: var(--panel); border: 1px dashed var(--line); border-radius: 8px; font-size: 13px; }
+  details.tool summary { cursor: pointer; padding: 6px 10px; color: var(--muted); }
+  details.tool summary code { color: var(--accent); }
+  details.tool pre { margin: 0; padding: 8px 10px; border-top: 1px dashed var(--line); max-height: 260px;
+                     overflow: auto; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--none);
+          border-radius: 8px; padding: 10px 14px; }
+  .card .verdict { font-weight: 650; }
+  .card .pair { color: var(--muted); font-size: 13px; }
+  .card .ror { font-size: 22px; font-weight: 700; margin: 4px 0 0; }
+  .card .ror small { font-size: 13px; font-weight: 400; color: var(--muted); }
+  .card .snip { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .known_effect { border-left-color: var(--known); } .known_effect .verdict { color: var(--known); }
+  .not_on_label_worth_asking_about { border-left-color: var(--ask); } .not_on_label_worth_asking_about .verdict { color: var(--ask); }
+  .on_label_not_disproportionate { border-left-color: var(--label); } .on_label_not_disproportionate .verdict { color: var(--label); }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent, var(--bg) 30%); padding: 24px 16px 16px; }
+  .bar form { max-width: 760px; margin: 0 auto; display: flex; gap: 8px; }
+  .bar input { flex: 1; min-width: 0; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line);
+               background: var(--panel); color: var(--ink); font: inherit; }
+  .bar button { border: 0; border-radius: 10px; padding: 0 16px; font: inherit; font-weight: 600; cursor: pointer;
+                background: var(--accent); color: var(--bg); }
+  .bar button.secondary { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  .bar button:disabled { opacity: 0.5; cursor: default; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Signal <span>Check</span></h1>
+    <p>Worried a medicine is behind a side effect? Ask whether FDA adverse-event reports back it up, and whether the official FDA label already lists it.</p>
+    <div class="disclaimer"><strong>Reports are voluntary and unverified. Not medical advice.</strong>
+      Never start, stop or change a medicine without talking to a doctor or pharmacist.</div>
+  </header>
+  <div class="how">Ask about a drug (generic or brand name) and a side effect. Try one of these:</div>
+  <div class="examples">
+    <button>Is nausea a real side effect of ibuprofen?</button>
+    <button>What do people report most for metformin, and what does its label warn about?</button>
+    <button>How does acetaminophen compare for nausea?</button>
+  </div>
+  <div id="messages"></div>
+</div>
+<div class="bar">
+  <form id="form">
+    <input id="input" placeholder="e.g. Does sertraline cause insomnia?" autocomplete="off" />
+    <button id="send" type="submit">Ask</button>
+    <button id="reset" type="button" class="secondary" title="Start a new conversation">New chat</button>
+  </form>
+</div>
+<script>
+  const messages = document.getElementById("messages");
+  const input = document.getElementById("input");
+  const sendBtn = document.getElementById("send");
+  let sessionId = null;
+
+  const VERDICTS = {
+    known_effect: "Known effect",
+    not_on_label_worth_asking_about: "Over-reported, not found on label: worth asking a pharmacist",
+    on_label_not_disproportionate: "On the label, but not over-reported",
+    no_signal: "No signal",
+  };
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  // Escape first, then allow only **bold** and *italic* from the model's markdown.
+  function renderLite(text) {
+    const esc = String(text || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    return esc.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
+  }
+
+  function signalCard(r) {
+    const card = el("div", "card " + r.verdict);
+    card.append(el("div", "verdict", VERDICTS[r.verdict] || r.verdict));
+    card.append(el("div", "pair", r.drug + " + " + r.reaction + " · " + r.reports_with_drug_and_reaction.toLocaleString() + " reports"));
+    const ror = el("div", "ror", "ROR " + r.reporting_odds_ratio + " ");
+    ror.append(el("small", "", "95% CI " + r.ci_95[0] + "–" + r.ci_95[1] + " (above 1 = reported more than with other drugs)"));
+    card.append(ror);
+    const lab = r.label || {};
+    card.append(el("div", "snip", lab.on_label
+      ? "Label (" + lab.sections.join(", ") + "): “…" + (lab.snippet || "") + "…”"
+      : "No matching text found on the FDA label."));
+    return card;
+  }
+
+  function toolPanel(call) {
+    const d = el("details", "tool");
+    const s = el("summary");
+    s.append("tool call: ", el("code", "", call.name), " " + JSON.stringify(call.args));
+    let result = call.result;
+    try { result = JSON.parse(call.result); } catch (e) {}
+    d.append(s, el("pre", "", typeof result === "string" ? result : JSON.stringify(result, null, 2)));
+    return [d, result];
+  }
+
+  async function send(text) {
+    text = (text || "").trim();
+    if (!text) return;
+    input.value = "";
+    sendBtn.disabled = true;
+    messages.append(el("div", "msg user", text));
+    const turn = el("div", "turn");
+    const answer = el("div", "msg assistant loading", "Checking FDA data…");
+    turn.append(answer);
+    messages.append(turn);
+    answer.scrollIntoView({ behavior: "smooth", block: "end" });
+    try {
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, session_id: sessionId }),
+      });
+      const data = await res.json();
+      sessionId = data.session_id;
+      for (const call of data.tool_calls || []) {
+        const [panel, result] = toolPanel(call);
+        turn.insertBefore(panel, answer);
+        if (call.name === "assess_signal" && result && result.verdict) turn.insertBefore(signalCard(result), answer);
+      }
+      answer.innerHTML = renderLite(data.response);
+    } catch (e) {
+      answer.textContent = "Error: " + e.message;
+    }
+    answer.classList.remove("loading");
+    answer.scrollIntoView({ behavior: "smooth", block: "end" });
+    sendBtn.disabled = false;
+    input.focus();
+  }
+
+  document.getElementById("form").addEventListener("submit", (e) => { e.preventDefault(); send(input.value); });
+  document.querySelectorAll(".examples button").forEach((b) => b.addEventListener("click", () => send(b.textContent)));
+  document.getElementById("reset").addEventListener("click", async () => {
+    if (sessionId) await fetch("/clear?session_id=" + encodeURIComponent(sessionId), { method: "POST" });
+    sessionId = null;
+    messages.replaceChildren();
+    input.focus();
+  });
+  input.focus();
+</script>
+</body>
+</html>
